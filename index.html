@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="View a hitter's 2027 wOBA projection after changing their metrics and skills.">
+<title>2027 wOBA Projection Model</title>
+<link rel="icon" href="plate.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css"><script defer src="engine.js"></script><script defer src="app.js"></script>
+</head><body>
+<main class="wrap">
+<header class="page-head"><h1>2027 wOBA Projection Model</h1><p>View a hitter’s 2027 wOBA projection after changing their metrics and skills.</p></header>
+
+<section class="control-surface" aria-label="Scenario controls">
+<div class="toolbar">
+<fieldset class="mode"><legend class="sr">Scenario mode</legend><div class="segments">
+<label><input type="radio" name="mode" value="manual" checked><span><i aria-hidden="true"></i> Manual</span></label>
+<label><input type="radio" name="mode" value="linked"><span><i aria-hidden="true"></i> Linked</span></label>
+</div></fieldset>
+<div class="data-actions"><strong id="dataset" role="status">Loading hitters…</strong></div>
+</div>
+<p id="error" role="alert" hidden></p>
+<div id="workbench" hidden>
+<div class="filters" aria-label="Player and scenario settings">
+<div class="filter-hitter"><label for="player">Hitter</label><select id="player"></select></div>
+<div class="filter-search"><label for="search">Search roster</label><input id="search" type="search" placeholder="Name or MLBAM ID" autocomplete="off"></div>
+<div class="filter-side"><label for="side">Batting side</label><select id="side"><option value="L">Left</option><option value="R">Right</option></select></div>
+<div class="filter-run"><button class="primary" id="run">Run scenario</button></div>
+<p id="searchNote" role="status" hidden></p>
+</div>
+<div id="scenarioArea">
+<section class="edit-area" aria-labelledby="ctrl-head">
+<div class="edit-bar"><div><h2 id="ctrl-head">Skill edits</h2><p id="modeNote">Only your edits and required adjustments.</p></div><div class="add"><label class="sr" for="metric">Choose a metric</label><select id="metric"></select><button id="add">Add edit</button><button class="quiet" id="reset">Clear edits</button></div></div>
+<div id="edits"></div><small id="pending" aria-live="polite"></small>
+</section>
+<section class="results" aria-labelledby="out-head">
+<div class="result-card">
+<div class="result-header"><span class="eyebrow">2027 wOBA projection</span><h2 id="out-head">Scenario result</h2><ul id="playerBio" class="player-bio" aria-label="Player bio" hidden></ul></div>
+<div class="scoregrid"><div><span>Baseline</span><strong id="baseline">—</strong></div><div><span>Scenario</span><strong id="scenario">—</strong></div><div><span>Change</span><strong id="delta">—</strong></div></div>
+<div class="result-info"><p id="summary" aria-live="polite"></p><label class="check"><input id="all" type="checkbox"> Show all metrics</label></div>
+<p id="rangeNote" role="status" hidden></p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Scenario adjustments"><table><thead><tr><th scope="col">Metric</th><th scope="col">Baseline</th><th scope="col">Your edit</th><th scope="col">Linked</th><th scope="col">Rule</th><th scope="col">Scenario</th></tr></thead><tbody id="details"></tbody></table></div>
+</div></section>
+</div>
+</div>
+</section>
+</main>
+</body></html>
