@@ -106,23 +106,71 @@ const WobaEngine=(()=>{
     return {d:effect,status:Math.abs(effect)<.000005?'Near-zero fitted response':years<3?'Limited history · '+years+' transitions':'Estimated from history',n,years};
   }
 
-  function shares(values, group, locks, lower={}){
+  function shares(values, group, locks){
     if(!group.every(k=>finite(values[k])))return;
     const free=group.filter(k=>!locks.has(k));
     const fixed=group.filter(k=>locks.has(k)).reduce((s,k)=>s+values[k],0);
     const remainder=100-fixed;
-    const min=free.reduce((s,k)=>s+(lower[k]||0),0);
-    if(remainder<min-1e-7||remainder>100*free.length+1e-7)throw Error('Locked values cannot balance the shares to 100%. Unlock or revise an edit.');
+    if(remainder< -1e-7||remainder>100*free.length+1e-7)throw Error('Locked values cannot balance the shares to 100%. Unlock or revise an edit.');
     if(!free.length)return;
     let lo=-201,hi=201;
     for(let i=0;i<50;i++){
       const mid=(hi+lo)/2;
-      if(free.reduce((s,k)=>s+clip(values[k]+mid,lower[k]||0,100),0)<remainder)lo=mid;else hi=mid;
+      if(free.reduce((s,k)=>s+clip(values[k]+mid,0,100),0)<remainder)lo=mid;else hi=mid;
     }
-    for(const k of free)values[k]=clip(values[k]+(lo+hi)/2,lower[k]||0,100);
+    for(const k of free)values[k]=clip(values[k]+(lo+hi)/2,0,100);
   }
 
-  function reconcile(v,base,locks,touched){
+  function shareRange(values, group, key, locks){
+    if(locks.has(key)||!group.every(k=>finite(values[k])))return [values[key],values[key]];
+    const others=group.filter(k=>k!==key);
+    const fixed=others.filter(k=>locks.has(k)).reduce((sum,k)=>sum+values[k],0);
+    const max=clip(100-fixed,0,100);
+    return [others.every(k=>locks.has(k))?max:0,max];
+  }
+
+  function reconcilePulledAir(out, locks){
+    const airKey='pull_air_pp', pullKey='pull_pp', gbKey='groundball';
+    const a=out[airKey], p=out[pullKey], g=out[gbKey];
+    if(!finite(a))return;
+    const error=()=>Error('Locked GB%, Pull%, and Pull AIR% values cannot form a valid batted-ball profile. Revise or unlock an edit.');
+    const tolerance=1e-7;
+    if(locks.has(airKey)){
+      let ground=g;
+      const [pullMin,pullMax]=finite(p)?shareRange(out,spray,pullKey,locks):[0,100];
+      if(pullMax+tolerance<a)throw error();
+      if(finite(g)){
+        const [gbMin,gbMax]=shareRange(out,shape,gbKey,locks);
+        const min=Math.max(gbMin,pullMin-a,0);
+        const max=Math.min(gbMax,100-a);
+        if(min>max+tolerance)throw error();
+        ground=locks.has(gbKey)?g:clip(g,min,Math.max(min,max));
+        if(Math.abs(ground-g)>1e-9){
+          out[gbKey]=ground;
+          shares(out,shape,new Set([...locks,gbKey]));
+        }
+      }
+      if(finite(p)&&!locks.has(pullKey)){
+        const min=Math.max(pullMin,a);
+        const max=Math.min(pullMax,finite(ground)?ground+a:100);
+        if(min>max+tolerance)throw error();
+        const pull=clip(p,min,Math.max(min,max));
+        if(Math.abs(pull-p)>1e-9){
+          out[pullKey]=pull;
+          shares(out,spray,new Set([...locks,pullKey]));
+        }
+      }
+    }
+    const low=finite(out[pullKey])&&finite(out[gbKey])?Math.max(0,out[pullKey]-out[gbKey]):0;
+    const high=Math.min(finite(out[pullKey])?out[pullKey]:100,finite(out[gbKey])?100-out[gbKey]:100);
+    if(locks.has(airKey)){
+      if(a<low-tolerance||a>high+tolerance)throw error();
+    }else{
+      out[airKey]=clip(a,low,high);
+    }
+  }
+
+  function reconcile(v,locks,touched){
     const out={...v};
     const touches=g=>g.some(k=>touched.has(k));
     if(touches(shape)){
@@ -131,15 +179,9 @@ const WobaEngine=(()=>{
       if(rest>=-1e-8&&rest<=100*n+1e-8)keep.add('groundball');
       shares(out,shape,keep);
     }
-    if(touches([...spray,'pull_air_pp'])){
-      const lockedAir=locks.has('pull_air_pp')&&finite(out.pull_air_pp);
-      if(lockedAir&&locks.has('pull_pp')&&out.pull_air_pp>out.pull_pp+1e-8)throw Error('Pulled air cannot exceed pull%. Revise one of the locked values.');
-      shares(out,spray,new Set([...locks,'spray_other_pp']),lockedAir?{pull_pp:out.pull_air_pp}:{});
-      if(finite(out.pull_pp)&&finite(out.pull_air_pp)&&out.pull_air_pp>out.pull_pp+1e-8){
-        if(lockedAir)throw Error('Pulled air cannot exceed pull% on this profile.');
-        out.pull_air_pp=out.pull_pp;
-      }
-    }
+    const sprayLocks=new Set([...locks,'spray_other_pp']);
+    if(touches(spray))shares(out,spray,sprayLocks);
+    if(touches([...shape,...spray,'pull_air_pp']))reconcilePulledAir(out,sprayLocks);
     if(touches(['barrel','hard_hit'])&&out.barrel>out.hard_hit){
       if(locks.has('barrel')&&locks.has('hard_hit'))throw Error('Barrel% cannot exceed hard-hit%. Revise one locked value.');
       if(locks.has('barrel'))out.hard_hit=out.barrel;
@@ -173,7 +215,7 @@ const WobaEngine=(()=>{
       proposed[k]=k==='spray_other_pp'?v:clip(manual[k]+linked[k].d,info[k].min,info[k].max);
     }
     const touched=new Set(Object.keys(base).filter(k=>Math.abs(proposed[k]-base[k])>1e-9));
-    const final=reconcile(proposed,base,locks,touched);
+    const final=reconcile(proposed,locks,touched);
     const x0={...p},x1={...p};
     for(const k of d.model.fields)if(finite(p[k]))x0['d_'+k]=x1['d_'+k]=0;
     for(const [k,m] of Object.entries(info))if(finite(final[k])&&finite(p[m.field])){
