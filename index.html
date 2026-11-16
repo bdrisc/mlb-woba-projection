@@ -12,8 +12,8 @@
 <section class="control-surface" aria-label="Scenario controls">
 <div class="toolbar">
 <fieldset class="mode"><legend class="sr">Scenario mode</legend><div class="segments">
-<label><input type="radio" name="mode" value="manual" checked><span><i aria-hidden="true"></i> Manual</span></label>
-<label><input type="radio" name="mode" value="linked"><span><i aria-hidden="true"></i> Linked</span></label>
+<label><input type="radio" name="mode" value="manual"><span><i aria-hidden="true"></i> Manual</span></label>
+<label><input type="radio" name="mode" value="linked" checked><span><i aria-hidden="true"></i> Linked</span></label>
 </div></fieldset>
 <div class="data-actions"><strong id="dataset" role="status">Loading hitters…</strong></div>
 </div>
@@ -28,7 +28,7 @@
 </div>
 <div id="scenarioArea">
 <section class="edit-area" aria-labelledby="ctrl-head">
-<div class="edit-bar"><div><h2 id="ctrl-head">Skill edits</h2><p id="modeNote">Only your edits and required adjustments.</p></div><div class="add"><label class="sr" for="metric">Choose a metric</label><select id="metric"></select><button id="add">Add edit</button><button class="quiet" id="reset">Clear edits</button></div></div>
+<div class="edit-bar"><div><h2 id="ctrl-head">Skill edits</h2><p id="modeNote">Your edits stay locked. Other skills can move with them.</p></div><div class="add"><label class="sr" for="metric">Choose a metric</label><select id="metric"></select><button id="add">Add edit</button><button class="quiet" id="reset">Clear edits</button></div></div>
 <div id="edits"></div><small id="pending" aria-live="polite"></small>
 </section>
 <section class="results" aria-labelledby="out-head">
